@@ -4,8 +4,8 @@ Status values: `To Do`, `In Progress`, `In Review`, `Done`. Update the row when 
 
 | # | Story | Owner | Points | Status | Issue |
 |---|-------|-------|-------:|--------|-------|
-| 1 | Manage pantry items | Bhaumik | 3 | In Progress | |
-| 2 | Validate pantry input | Bhaumik | 2 | In Progress | |
+| 1 | Manage pantry items | Bhaumik | 3 | In Review | |
+| 2 | Validate pantry input | Bhaumik | 2 | In Review | |
 | 3 | Save and load pantry and recipes using JSON | Bhaumik | 3 | In Progress | |
 | 4 | Add and view recipes | Gokulan | 3 | To Do | |
 | 5 | Reject duplicate recipes | Gokulan | 2 | To Do | |
@@ -25,9 +25,11 @@ Total: 24 points (Bhaumik 8, Gokulan 8, Yashas 8).
 - Story 3: load/save, missing-file defaults, corruption handling, atomic replacement,
   failure cleanup, and pantry restart workflow implemented and tested. Real RecipeBook
   reconstruction and CLI startup/save integration remain To Do after teammate work lands.
-- All three remain In Progress under the team's definition of done: PR review/merge
-  and issue closure have not occurred. Remote main was verified as the foundation commit
-  used for this branch. No issue numbers were assumed. See `bhaumik_handoff.md` for evidence.
+- Stories 1 and 2 are In Review in [draft PR #2](https://github.com/kakarot1047/pantry-chef/pull/2).
+  Story 3 remains In Progress pending real RecipeBook/CLI integration. None is marked Done:
+  PR review/merge and issue closure have not occurred. Remote main was verified as the
+  foundation commit used for this branch. Exact-title issue lookup returned no matches;
+  no issue numbers were assumed. See `bhaumik_handoff.md` for evidence.
 
 ## Icebox — stretch features (not in this project)
 - Shopping list generated from shortages

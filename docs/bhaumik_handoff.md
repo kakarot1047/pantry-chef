@@ -13,7 +13,9 @@ empty folder, preserving history. Its files were not edited. Origin points to
 
 The initial authenticated remote check completed after a delay and confirmed that GitHub
 main still points to `02aa68c`. Commits use the existing `bhaumik33` Git identity; no
-identities were changed. Publication status is reported separately after the push attempt.
+identities were changed. The branch is pushed and [draft PR #2](https://github.com/kakarot1047/pantry-chef/pull/2)
+targets main. Nothing was merged. Exact-title issue lookup returned no matches;
+no issue links were guessed or issue updates made.
 
 ## Implemented stories
 
@@ -23,8 +25,9 @@ identities were changed. Publication status is reported separately after the pus
 | Validate pantry input | 2 | All domain acceptance criteria pass | Review, merge, CLI error handling |
 | Save and load pantry and recipes using JSON | 3 | Storage and pantry round-trip pass; recipe hashes preserved | Actual RecipeBook reconstruction, CLI wiring, review and merge |
 
-Backlog statuses remain In Progress because `planning.md` requires review/merge and issue
-closure before Done. Recipe, RecipeBook, MatchEngine, cooking orchestration, and CLI
+The two pantry stories are In Review; persistence remains In Progress pending integration.
+`planning.md` requires review/merge and issue closure before Done.
+Recipe, RecipeBook, MatchEngine, cooking orchestration, and CLI
 behavior were not implemented. Pairing and retrospective templates were left untouched.
 
 ## Public interfaces
@@ -116,26 +119,28 @@ was not counted as a successful full-project inspection.
    detail to design.md, and make the optional-feature acceptance criteria explicit. The nine
    existing stories are all MVP; the icebox currently lists optional ideas only.
 
-## Manual publication after GitHub sign-in
+## Review and future updates
 
-Sign in with an account that has access to the repository. In PowerShell:
+The branch is already published in draft PR #2. A teammate should review it; do not merge
+your own PR. For later updates, use the existing branch. In PowerShell:
 
 ```powershell
 Set-Location 'C:\Users\Bhaumik\Desktop\Software eng\Project-1'
 $pantryGit = 'C:\Users\Bhaumik\AppData\Local\GitHubDesktop\app-3.6.5\resources\app\git\cmd\git.exe'
-& $pantryGit status --short --branch
-& $pantryGit fetch origin
-& $pantryGit log --oneline HEAD..origin/main
+& $pantryGit -c 'safe.directory=C:/Users/Bhaumik/Desktop/Software eng/Project-1' status --short --branch
+& $pantryGit -c 'safe.directory=C:/Users/Bhaumik/Desktop/Software eng/Project-1' fetch origin
+& $pantryGit -c 'safe.directory=C:/Users/Bhaumik/Desktop/Software eng/Project-1' log --oneline HEAD..origin/main
 ```
 
-If main advanced, review those changes and rebase this feature branch onto origin/main,
+The per-command safe.directory option handles the different Windows owner of the checkout
+created in the sandbox without changing global Git configuration. If main advanced,
+review those changes and rebase this feature branch onto origin/main,
 resolve conflicts with the owners, and rerun tests/style checks before pushing. Then:
 
 ```powershell
-& $pantryGit push -u origin feature/bhaumik-pantry-storage
+& $pantryGit -c 'safe.directory=C:/Users/Bhaumik/Desktop/Software eng/Project-1' push origin feature/bhaumik-pantry-storage
 ```
 
-Open GitHub's compare page for `main...feature/bhaumik-pantry-storage`, targeting main,
-and paste `docs/bhaumik_pr_body.md` into the PR description. Ask a teammate to review.
-Locate real issues by title before adding links; do not close the persistence issue until
-the real recipe and CLI integration criteria are satisfied. Do not merge your own PR.
+New pushes update the existing PR. `docs/bhaumik_pr_body.md` contains its prepared description.
+Locate real issues by title before adding links; do not close a persistence issue until
+the real recipe and CLI integration criteria are satisfied.

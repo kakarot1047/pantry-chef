@@ -62,7 +62,8 @@ raises `PantryChef::StorageError` for corrupt data or I/O errors. Saving writes 
 file in the destination directory, flushes and closes it, and renames it over the target.
 Recipes are preserved as serialized hashes; actual RecipeBook reconstruction awaits
 Gokulan's implementation. Recipe, RecipeBook, MatchEngine, and CLI remain skeletons.
-Track progress in `docs/backlog.md`; no PR has been published or merged.
+Track progress in `docs/backlog.md` and [draft PR #2](https://github.com/kakarot1047/pantry-chef/pull/2).
+The feature branch is pushed; the PR has not been merged.
 
 Planned limitations of the finished MVP: no unit conversion (units must match), single local JSON file, no shopping list, expiration dates or recipe scaling.
 
