@@ -12,7 +12,7 @@ module PantryChef
       @name = Recipe.normalize_name(name)
       @servings = Recipe.parse_servings(servings)
       @ingredients = Recipe.parse_ingredients(ingredients)
-
+      freeze
     end
 
     def to_h
