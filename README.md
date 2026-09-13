@@ -22,6 +22,7 @@ bundle install
 ```bash
 ruby main.rb
 ```
+The terminal interface is not implemented yet; `main.rb` currently prints a status message.
 
 ## Tests, coverage and style
 ```bash
@@ -29,7 +30,38 @@ bundle exec rspec        # runs the test suite; coverage report is written to co
 bundle exec rubocop      # style check
 ```
 
-## Current status and limitations
-The project is at the foundation stage: tooling, documentation, and empty class skeletons are in place. No user-story behavior is implemented yet, `main.rb` only prints a status message, and the test suite is empty. Track progress in `docs/backlog.md`.
+## Current status
+| Area | Owner | Status |
+|------|-------|--------|
+| Recipe and RecipeBook (add/view recipes, duplicate rejection) | Gokulan | Implemented, tested |
+| Pantry management and validation | Bhaumik | In progress |
+| JSON persistence | Bhaumik | In progress |
+| MatchEngine (cookable, almost-makeable, cook) | Yashas | In progress |
+| Terminal CLI | Gokulan | Not started (depends on the above) |
 
-Planned limitations of the finished MVP: no unit conversion (units must match), single local JSON file, no shopping list, expiration dates or recipe scaling.
+`docs/backlog.md` is the authoritative per-story status.
+
+### Using the recipe classes today
+Until the CLI exists, the recipe classes can be exercised from `irb`:
+
+```ruby
+require_relative 'lib/recipe_book'
+
+book = PantryChef::RecipeBook.new
+book.add(PantryChef::Recipe.new(
+  name: 'Pancakes', servings: 4,
+  ingredients: { 'flour' => { 'quantity' => 200, 'unit' => 'g' },
+                 'eggs'  => { 'quantity' => 2,   'unit' => 'pcs' } }
+))
+book.find('PANCAKES').servings   # => 4
+book.add(PantryChef::Recipe.new(name: 'pancakes', servings: 1, ingredients: { 'flour' => { 'quantity' => 1, 'unit' => 'g' } }))
+# => PantryChef::ValidationError: a recipe named 'pancakes' already exists
+```
+
+## Design notes
+Business rules live in the `lib/` domain classes, which do no terminal I/O; the CLI will only parse input, call domain objects and print. Invalid input raises `PantryChef::ValidationError` (`lib/errors.rb`), which the CLI will be the single place to rescue. Ingredients are represented everywhere as a hash keyed by normalized name: `{ "flour" => { "quantity" => 400, "unit" => "g" } }`. No unit conversion is performed. See `docs/design.md`.
+
+## Limitations
+- No unit conversion (units must match after normalization).
+- Single local JSON file for persistence.
+- Stretch features (shopping list, expiration dates, recipe scaling) are out of scope for this project.
