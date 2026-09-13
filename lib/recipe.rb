@@ -17,9 +17,11 @@ module PantryChef
 
     def to_h
       {
-        'name' => name,
+        'name' => name.dup,
         'servings' => servings,
-        'ingredients' => ingredients.transform_values(&:dup)
+        'ingredients' => ingredients.to_h do |k, v|
+          [k.dup, { 'quantity' => v['quantity'], 'unit' => v['unit'].dup }]
+        end
       }
     end
 
@@ -43,7 +45,7 @@ module PantryChef
       text = value.to_s.strip.downcase
       raise ValidationError, "#{label} cannot be blank" if text.empty?
 
-      text
+      text.freeze
     end
 
     def self.parse_servings(value)
@@ -71,16 +73,23 @@ module PantryChef
     def self.parse_requirement(name, spec)
       unless spec.is_a?(Hash)
         raise ValidationError,
-              "ingredient '#{name}' must be a hash with a quantity and unit"
+              "ingredient '#{name}' must be a hash with quantity and unit"
       end
 
       s = spec.transform_keys(&:to_s)
-      qty = Float(s['quantity'], exception: false)
-      raise ValidationError, "ingredient '#{name}' quantity must be a positive number" if qty.nil? || qty <= 0
-
-      qty = qty.to_i if qty == qty.floor
-      { 'quantity' => qty, 'unit' => normalize_name(s['unit'], "ingredient '#{name}' unit") }.freeze
+      { 'quantity' => parse_quantity(name, s['quantity']),
+        'unit' => normalize_name(s['unit'], "ingredient '#{name}' unit") }.freeze
     end
     private_class_method :parse_requirement
+
+    def self.parse_quantity(name, value)
+      qty = Float(value, exception: false)
+      if qty.nil? || !qty.finite? || qty <= 0
+        raise ValidationError, "ingredient '#{name}' quantity must be a positive finite number"
+      end
+
+      qty == qty.floor ? qty.to_i : qty
+    end
+    private_class_method :parse_quantity
   end
 end

@@ -74,13 +74,12 @@ RSpec.describe PantryChef::RecipeBook do
     it 'round-trips through to_h and from_h' do
       book.add(pancakes)
       book.add(omelette)
-      copy = described_class.from_h(book.to_h)
-      expect(copy.all).to eq(book.all)
+      expect(described_class.from_h(book.to_h).all).to eq(book.all)
     end
 
-    it 'produces the agreed JSON shape keyed by recipe name' do
+    it 'produces a map keyed by recipe name (Storage adds the outer "recipes" key)' do
       book.add(pancakes)
-      expect(book.to_h).to eq('recipes' => { 'pancakes' => pancakes.to_h })
+      expect(book.to_h).to eq('pancakes' => pancakes.to_h)
     end
 
     it 'loads an empty book when the recipes key is missing' do
@@ -89,9 +88,11 @@ RSpec.describe PantryChef::RecipeBook do
 
     it 'rejects malformed data' do
       expect do
-        described_class.from_h('recipes' => [])
+        described_class.from_h([])
       end.to raise_error(PantryChef::ValidationError, /keyed by recipe name/)
-      expect { described_class.from_h(nil) }.to raise_error(PantryChef::ValidationError, /must be a hash/)
+      expect do
+        described_class.from_h(nil)
+      end.to raise_error(PantryChef::ValidationError, /keyed by recipe name/)
     end
   end
 end

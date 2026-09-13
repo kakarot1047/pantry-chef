@@ -47,6 +47,22 @@ RSpec.describe PantryChef::Recipe do
       recipe.to_h['ingredients']['flour']['quantity'] = 999
       expect(recipe.ingredients['flour']['quantity']).to eq(200)
     end
+
+    it 'freezes name, ingredient names, and units' do
+      recipe = build
+      expect(recipe.name).to be_frozen
+      expect(recipe.ingredients.keys).to all(be_frozen)
+      expect(recipe.ingredients.values.map { |v| v['unit'] }).to all(be_frozen)
+    end
+
+    it 'returns independent string copies from to_h' do
+      recipe = build
+      h = recipe.to_h
+      h['name'] << 'x'
+      h['ingredients']['flour']['unit'] << 'x'
+      expect(recipe.name).to eq('pancakes')
+      expect(recipe.ingredients['flour']['unit']).to eq('g')
+    end
   end
 
   describe 'validation' do
@@ -75,13 +91,20 @@ RSpec.describe PantryChef::Recipe do
         build(ingredients: { 'flour' => 200 })
       end.to raise_error(PantryChef::ValidationError, /must be a hash/)
       expect { build(ingredients: { 'flour' => { 'unit' => 'g' } }) }
-        .to raise_error(PantryChef::ValidationError, /quantity must be a positive number/)
+        .to raise_error(PantryChef::ValidationError, /quantity must be a positive finite number/)
     end
 
     it 'rejects non-positive or non-numeric quantities' do
       [0, -5, 'lots', nil].each do |bad|
         expect { build(ingredients: { 'flour' => { 'quantity' => bad, 'unit' => 'g' } }) }
-          .to raise_error(PantryChef::ValidationError, /quantity must be a positive number/)
+          .to raise_error(PantryChef::ValidationError, /quantity must be a positive finite number/)
+      end
+    end
+
+    it 'rejects infinite and NaN quantities' do
+      [Float::INFINITY, -Float::INFINITY, Float::NAN, 'Infinity', 'NaN'].each do |bad|
+        expect { build(ingredients: { 'flour' => { 'quantity' => bad, 'unit' => 'g' } }) }
+          .to raise_error(PantryChef::ValidationError, /positive finite number/)
       end
     end
 

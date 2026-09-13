@@ -42,16 +42,13 @@ module PantryChef
     end
 
     def to_h
-      { 'recipes' => @recipes.transform_values(&:to_h) }
+      @recipes.transform_values(&:to_h)
     end
 
     def self.from_h(hash)
-      raise ValidationError, 'recipe book data must be a hash' unless hash.is_a?(Hash)
+      raise ValidationError, 'recipe book data must be a hash keyed by recipe name' unless hash.is_a?(Hash)
 
-      entries = hash.transform_keys(&:to_s)['recipes'] || {}
-      raise ValidationError, "'recipes' must be a hash keyed by recipe name" unless entries.is_a?(Hash)
-
-      new(entries.values.map { |h| Recipe.from_h(h) })
+      new(hash.values.map { |h| Recipe.from_h(h) })
     end
   end
 end
