@@ -4,25 +4,21 @@ Status values: `To Do`, `In Progress`, `In Review`, `Done`. Update the row when 
 
 | # | Story | Owner | Points | Status | Issue |
 |---|-------|-------|-------:|--------|-------|
-<<<<<<< HEAD
-| 1 | Manage pantry items | Bhaumik | 3 | To Do | |
-| 2 | Validate pantry input | Bhaumik | 2 | To Do | |
-| 3 | Save and load pantry and recipes using JSON | Bhaumik | 3 | To Do | |
-| 4 | Add and view recipes | Gokulan | 3 | In Review | [#4](https://github.com/kakarot1047/pantry-chef/issues/3) |
-| 5 | Reject duplicate recipes | Gokulan | 2 | In Review | [#5](https://github.com/kakarot1047/pantry-chef/issues/4) |
-=======
 | 1 | Manage pantry items | Bhaumik | 3 | In Review | |
 | 2 | Validate pantry input | Bhaumik | 2 | In Review | |
 | 3 | Save and load pantry and recipes using JSON | Bhaumik | 3 | In Progress | |
-| 4 | Add and view recipes | Gokulan | 3 | To Do | |
-| 5 | Reject duplicate recipes | Gokulan | 2 | To Do | |
->>>>>>> origin/feature/bhaumik-pantry-storage
+| 4 | Add and view recipes | Gokulan | 3 | In Review | |
+| 5 | Reject duplicate recipes | Gokulan | 2 | In Review | |
 | 6 | Build terminal CLI | Gokulan | 3 | To Do | |
 | 7 | Show recipes that can be made | Yashas | 3 | To Do | |
 | 8 | Show almost-makeable recipes and shortages | Yashas | 2 | To Do | |
 | 9 | Cook a recipe atomically and deduct ingredients | Yashas | 3 | To Do | |
 
 Total: 24 points (Bhaumik 8, Gokulan 8, Yashas 8).
+
+Issue links are blank because issue numbers have not been confirmed against the tracker.
+Fill each cell in once the matching issue is verified; no number has been assumed.
+No story is marked `Done`: no pull request has been reviewed, merged, or closed an issue.
 
 ## Bhaumik implementation update - 2026-09-12
 
@@ -38,6 +34,19 @@ Total: 24 points (Bhaumik 8, Gokulan 8, Yashas 8).
   PR review/merge and issue closure have not occurred. Remote main was verified as the
   foundation commit used for this branch. Exact-title issue lookup returned no matches;
   no issue numbers were assumed. See `bhaumik_handoff.md` for evidence.
+
+## Gokulan implementation update - 2026-09-13
+
+- Story 4: `Recipe` validates name, servings, ingredient names, positive finite
+  quantities, and units, normalizes them, freezes the object and its strings, and
+  serializes through `to_h`/`Recipe.from_h`. `RecipeBook` adds, looks up
+  case-insensitively, lists sorted, and serializes as a map keyed by recipe name.
+- Story 5: duplicate names are rejected ignoring case, from both `add` and the
+  constructor; the existing recipe is left unchanged and exactly one remains.
+- Both are In Review in [PR #5](https://github.com/kakarot1047/pantry-chef/pull/5),
+  which is not merged. Neither is Done.
+- Story 6 (terminal CLI) remains To Do and is blocked on Yashas's matching and
+  cooking work in addition to the pantry and storage work above.
 
 ## Icebox — stretch features (not in this project)
 - Shopping list generated from shortages

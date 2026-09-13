@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'errors'
+require_relative 'validation_error'
 require_relative 'recipe'
 
 module PantryChef

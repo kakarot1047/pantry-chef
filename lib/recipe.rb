@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'errors'
+require_relative 'validation_error'
 
 module PantryChef
   # A named recipe: servings plus ingredient requirements keyed by ingredient name.

@@ -24,32 +24,13 @@ bundle install
 ```bash
 ruby main.rb
 ```
-The terminal interface is not implemented yet; `main.rb` currently prints a status message.
 
-The terminal menu is still awaiting Gokulan's implementation. Currently this command
-prints a development-status message. To try the completed pantry API, run
-`ruby -Ilib -rpantry -e "p = PantryChef::Pantry.new; p.add_item('sugar', 200, 'g'); puts p.items"`.
+The terminal menu is still awaiting Gokulan's implementation, so this command currently
+prints a development-status message. The finished classes can be exercised directly:
 
-## Tests, coverage and style
 ```bash
-bundle exec rspec        # runs the test suite; coverage report is written to coverage/index.html
-bundle exec rubocop      # style check
+ruby -Ilib -rpantry -e "p = PantryChef::Pantry.new; p.add_item('sugar', 200, 'g'); puts p.items"
 ```
-
-<<<<<<< HEAD
-## Current status
-| Area | Owner | Status |
-|------|-------|--------|
-| Recipe and RecipeBook (add/view recipes, duplicate rejection) | Gokulan | Implemented, tested |
-| Pantry management and validation | Bhaumik | In progress |
-| JSON persistence | Bhaumik | In progress |
-| MatchEngine (cookable, almost-makeable, cook) | Yashas | In progress |
-| Terminal CLI | Gokulan | Not started (depends on the above) |
-
-`docs/backlog.md` is the authoritative per-story status.
-
-### Using the recipe classes today
-Until the CLI exists, the recipe classes can be exercised from `irb`:
 
 ```ruby
 require_relative 'lib/recipe_book'
@@ -60,19 +41,19 @@ book.add(PantryChef::Recipe.new(
   ingredients: { 'flour' => { 'quantity' => 200, 'unit' => 'g' },
                  'eggs'  => { 'quantity' => 2,   'unit' => 'pcs' } }
 ))
-book.find('PANCAKES').servings   # => 4
-book.add(PantryChef::Recipe.new(name: 'pancakes', servings: 1, ingredients: { 'flour' => { 'quantity' => 1, 'unit' => 'g' } }))
+book.find('PANCAKES').servings
+# => 4
+book.add(PantryChef::Recipe.new(name: 'pancakes', servings: 1,
+                                ingredients: { 'flour' => { 'quantity' => 1, 'unit' => 'g' } }))
 # => PantryChef::ValidationError: a recipe named 'pancakes' already exists
 ```
 
-## Design notes
-Business rules live in the `lib/` domain classes, which do no terminal I/O; the CLI will only parse input, call domain objects and print. Invalid input raises `PantryChef::ValidationError` (`lib/errors.rb`), which the CLI will be the single place to rescue. Ingredients are represented everywhere as a hash keyed by normalized name: `{ "flour" => { "quantity" => 400, "unit" => "g" } }`. No unit conversion is performed. See `docs/design.md`.
+## Tests, coverage and style
+```bash
+bundle exec rspec        # runs the test suite; coverage report is written to coverage/index.html
+bundle exec rubocop      # style check
+```
 
-## Limitations
-- No unit conversion (units must match after normalization).
-- Single local JSON file for persistence.
-- Stretch features (shopping list, expiration dates, recipe scaling) are out of scope for this project.
-=======
 The suite includes unit tests and two domain workflow acceptance scenarios, including
 loading saved inventory in a fresh Ruby process. Full terminal acceptance tests await
 CLI integration. SimpleCov enforces an 80% minimum; open `coverage/index.html` for its
@@ -81,31 +62,56 @@ generated report. Coverage does not imply completion of the remaining class skel
 If RuboCop reports **0 files inspected** on Windows, use explicit file paths:
 
 ```bash
-bundle exec rubocop --cache false Gemfile main.rb lib/cli.rb lib/match_engine.rb lib/pantry.rb lib/recipe.rb lib/recipe_book.rb lib/storage.rb lib/validation_error.rb spec/spec_helper.rb spec/pantry_spec.rb spec/storage_spec.rb spec/acceptance/pantry_workflow_spec.rb
+bundle exec rubocop --cache false Gemfile main.rb lib/cli.rb lib/match_engine.rb lib/pantry.rb lib/recipe.rb lib/recipe_book.rb lib/storage.rb lib/validation_error.rb spec/spec_helper.rb spec/pantry_spec.rb spec/recipe_spec.rb spec/recipe_book_spec.rb spec/storage_spec.rb spec/acceptance/pantry_workflow_spec.rb
 ```
 
-The foundation currently has five style offenses in teammate-owned files. See
-`docs/bhaumik_handoff.md` for exact findings, the passing scope check, and integration steps.
+The foundation currently has style offenses in the empty class skeletons owned by other
+stories. See `docs/bhaumik_handoff.md` for exact findings, the passing scope check, and
+integration steps.
 
-## Current status and limitations
+## Design notes
+Business rules live in the `lib/` domain classes, which perform no terminal I/O; the CLI
+will only parse input, call domain objects and print. Invalid input raises
+`PantryChef::ValidationError` (`lib/validation_error.rb`), which the CLI will be the single
+place to rescue; `Storage` raises `PantryChef::StorageError` for corrupt data and I/O
+failures. Ingredients are represented everywhere as a hash keyed by normalized name:
+`{ "flour" => { "quantity" => 400, "unit" => "g" } }`. `RecipeBook#to_h` returns the map
+keyed by recipe name and `Storage` adds the top-level `"recipes"` key, so the saved file is
+a single envelope:
+
+```json
+{
+  "pantry":  { "flour": { "quantity": 500, "unit": "g" } },
+  "recipes": { "flatbread": { "name": "flatbread", "servings": 2,
+                              "ingredients": { "flour": { "quantity": 200, "unit": "g" } } } }
+}
+```
+
+No unit conversion is performed. See `docs/design.md`.
+
+## Current status
 Pantry management, validation, safe consumption, and atomic JSON storage are implemented
-on `feature/bhaumik-pantry-storage`. Names and units are trimmed and lowercased; adding
-an existing item in the same unit increases its stock. Invalid operations preserve state.
-Pantry lookups and sorted listings return copies. Updates set an absolute positive quantity;
-an explicit new unit relabels that quantity without converting it. Consumption requires
-matching units and removes exhausted items.
+on `feature/bhaumik-pantry-storage` (draft PR #2, not merged). Names and units are trimmed
+and lowercased; adding an existing item in the same unit increases its stock. Invalid
+operations preserve state. Pantry lookups and sorted listings return copies. Updates set an
+absolute positive quantity; an explicit new unit relabels that quantity without converting
+it. Consumption requires matching units and removes exhausted items. Storage creates
+missing parent directories, returns empty state for a missing save file, and writes through
+a temporary file renamed over the target.
 
-Storage creates missing parent directories, returns empty state for missing saves, and
-raises `PantryChef::StorageError` for corrupt data or I/O errors. Saving writes a temporary
-file in the destination directory, flushes and closes it, and renames it over the target.
-Recipes are preserved as serialized hashes; actual RecipeBook reconstruction awaits
-Gokulan's implementation. Recipe, RecipeBook, MatchEngine, and CLI remain skeletons.
-Track progress in `docs/backlog.md` and [draft PR #2](https://github.com/kakarot1047/pantry-chef/pull/2).
-The feature branch is pushed; the PR has not been merged.
+Recipe and RecipeBook are implemented on `faeture/gokulan-recipes` (PR #5, not merged):
+validated immutable recipes, case-insensitive lookup, duplicate rejection, and
+serialization in the shape above. Storage currently preserves recipes as serialized hashes;
+wiring `RecipeBook.from_h` into `Storage#load` is an integration step for after both
+branches merge.
 
-Planned limitations of the finished MVP: no unit conversion (units must match), single local JSON file, no shopping list, expiration dates or recipe scaling.
+MatchEngine and CLI remain skeletons. `docs/backlog.md` is the authoritative per-story
+status; no story is Done, because no pull request has been merged.
 
-Additional storage limitations: one writer at a time, no cross-process locking, and no
-guarantee against power loss during a filesystem operation. Fractional quantities use
-Ruby floating-point arithmetic and exact comparisons; no rounding tolerance is applied.
->>>>>>> origin/feature/bhaumik-pantry-storage
+## Limitations
+- No unit conversion; quantities are comparable only when units match after normalization.
+- Single local JSON file, one writer at a time, no cross-process locking, and no guarantee
+  against power loss during a filesystem operation.
+- Fractional quantities use Ruby floating-point arithmetic with exact comparisons; no
+  rounding tolerance is applied.
+- Stretch features (shopping list, expiration dates, recipe scaling) are out of scope.
