@@ -45,11 +45,14 @@ module PantryChef
 
       text
     end
-  
+
     def self.parse_servings(value)
       count = Integer(value.to_s, exception: false)
-      raise ValidationError, "servings must be a positive whole number (got #{value.inspect})" if count.nil? || count < 1
-      
+      if count.nil? || count < 1
+        raise ValidationError,
+              "servings must be a positive whole number (got #{value.inspect})"
+      end
+
       count
     end
 
@@ -62,21 +65,22 @@ module PantryChef
         raise ValidationError, "duplicate ingredient '#{name}' in recipe" if acc.key?(name)
 
         acc[name] = parse_requirement(name, spec)
-
       end.freeze
     end
 
     def self.parse_requirement(name, spec)
-      raise ValidationError, "ingredient '#{name}' must be a hash with a quantity and unit" unless spec.is_a?(Hash)
-      
+      unless spec.is_a?(Hash)
+        raise ValidationError,
+              "ingredient '#{name}' must be a hash with a quantity and unit"
+      end
+
       s = spec.transform_keys(&:to_s)
       qty = Float(s['quantity'], exception: false)
       raise ValidationError, "ingredient '#{name}' quantity must be a positive number" if qty.nil? || qty <= 0
 
-      qty = qty.to_i if qty == qty.floor 
-      { 'quantity' => qty, 'unit' => normalize_name(s['unit'], "ingredient '#{name}' unit")}.freeze
+      qty = qty.to_i if qty == qty.floor
+      { 'quantity' => qty, 'unit' => normalize_name(s['unit'], "ingredient '#{name}' unit") }.freeze
     end
     private_class_method :parse_requirement
-
   end
 end
