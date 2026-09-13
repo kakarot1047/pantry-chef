@@ -10,9 +10,9 @@ Status values: `To Do`, `In Progress`, `In Review`, `Done`. Update the row when 
 | 4 | Add and view recipes | Gokulan | 3 | In Review | |
 | 5 | Reject duplicate recipes | Gokulan | 2 | In Review | |
 | 6 | Build terminal CLI | Gokulan | 3 | To Do | |
-| 7 | Show recipes that can be made | Yashas | 3 | To Do | |
-| 8 | Show almost-makeable recipes and shortages | Yashas | 2 | To Do | |
-| 9 | Cook a recipe atomically and deduct ingredients | Yashas | 3 | To Do | |
+| 7 | Show recipes that can be made | Yashas | 3 | In Progress | |
+| 8 | Show almost-makeable recipes and shortages | Yashas | 2 | In Progress | |
+| 9 | Cook a recipe atomically and deduct ingredients | Yashas | 3 | In Progress | |
 
 Total: 24 points (Bhaumik 8, Gokulan 8, Yashas 8).
 
@@ -47,6 +47,20 @@ No story is marked `Done`: no pull request has been reviewed, merged, or closed 
   which is not merged. Neither is Done.
 - Story 6 (terminal CLI) remains To Do and is blocked on Yashas's matching and
   cooking work in addition to the pantry and storage work above.
+
+## Yashas implementation update - 2026-09-13
+
+- Story 7: `MatchEngine#shortages_for`, `#cookable?`, and `#cookable_recipes` compare
+  every requirement against pantry quantity and unit without mutating inventory.
+- Story 8: `#almost_makeable(max_missing:)` returns structured shortages for recipes
+  with 1..max_missing short ingredient names; cookable recipes are excluded;
+  non-positive thresholds raise `ValidationError`.
+- Story 9: `#cook(recipe_name)` finds case-insensitively, validates all shortages
+  first, then consumes through `Pantry#consume`; failures leave pantry unchanged.
+- Stories 7–9 are In Progress on `feature/yashas-matching-cooking`. Not Done:
+  PR review/merge and issue closure have not occurred. Issue links left blank
+  because numbers were not confirmed. Built against Pantry/Recipe/RecipeBook
+  interfaces from teammate branches (not yet merged to `main`).
 
 ## Icebox — stretch features (not in this project)
 - Shopping list generated from shortages
