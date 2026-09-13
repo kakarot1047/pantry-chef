@@ -39,7 +39,7 @@ module PantryChef
       to_h.hash
     end
 
-    def self.normalize_values(value, label = 'recipe name')
+    def self.normalize_name(value, label = 'recipe name')
       text = value.to_s.strip.downcase
       raise ValidationError, "#{label} cannot be blank" if text.empty?
 
