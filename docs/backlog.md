@@ -9,19 +9,18 @@ Status values: `To Do`, `In Progress`, `In Review`, `Done`. Update the row when 
 | 3 | Save and load pantry and recipes using JSON | Bhaumik | 3 | Done | [#2](https://github.com/kakarot1047/pantry-chef/pull/2) |
 | 4 | Add and view recipes | Gokulan | 3 | Done | [#5](https://github.com/kakarot1047/pantry-chef/pull/5) |
 | 5 | Reject duplicate recipes | Gokulan | 2 | Done | [#5](https://github.com/kakarot1047/pantry-chef/pull/5) |
-| 6 | Build terminal CLI | Gokulan | 3 | In Review | |
+| 6 | Build terminal CLI | Gokulan | 3 | Done | [#10](https://github.com/kakarot1047/pantry-chef/pull/10) |
 | 7 | Show recipes that can be made | Yashas | 3 | Done | [#6](https://github.com/kakarot1047/pantry-chef/pull/6) |
 | 8 | Show almost-makeable recipes and shortages | Yashas | 2 | Done | [#6](https://github.com/kakarot1047/pantry-chef/pull/6) |
 | 9 | Cook a recipe atomically and deduct ingredients | Yashas | 3 | Done | [#6](https://github.com/kakarot1047/pantry-chef/pull/6) |
 
-Total: 24 points (Bhaumik 8, Gokulan 8, Yashas 8). Completed and merged: 21 points.
-Story 6 moves to `Done` once its pull request is reviewed and merged.
+All 24 points are complete and merged into `main` (Bhaumik 8, Gokulan 8, Yashas 8).
 
 Caveat on the definition of done: `docs/planning.md` also requires the matching issue to be
 closed. Story issues were not found in the tracker by any teammate, so no issue numbers were
 assumed and no issue links are recorded. Every other condition — acceptance criteria covered
-by passing specs, `rspec` and `rubocop` green, PR merged into `main` — is met for the eight
-stories marked Done.
+by passing specs, `rspec` and `rubocop` green, PR reviewed and merged into `main` — is met
+for all nine stories.
 
 ## Bhaumik implementation update - 2026-09-12
 
@@ -66,9 +65,18 @@ stories marked Done.
   reconstructs `Pantry` and `RecipeBook` from it, and wires both into `MatchEngine`.
   Mutating commands persist immediately. No business rules live in the CLI.
 - `MatchEngine#almost_makeable` defaults to `max_missing: 1`; the `almost` command passes
-  `2` explicitly so the documented story-8 default holds without changing his class.
+  `2` explicitly so the documented story-8 default holds without changing that class.
+- Review feedback addressed before merge: mutating commands now run through
+  `persist_change`, which snapshots both objects and restores them in place if the save
+  raises, so a failed save cannot leave memory and disk inconsistent and a retry cannot
+  double-apply stock; `RecipeBook#delete` was added to make that rollback possible;
+  duplicate ingredients within one recipe are rejected instead of silently overwritten;
+  `main.rb` catches a corrupt data file and exits with a readable message instead of a
+  stack trace; `Layout/EndOfLine` is pinned to `lf` to match `.gitattributes`; and the
+  text helpers moved to `lib/cli_formatting.rb` to keep the class-length limit honest.
+- Merged into `main` on 2026-09-14 via PR #10.
 
-## Icebox — stretch features (not in this project)
+## Icebox — stretch features (not implemented in Project 1)
 - Shopping list generated from shortages
 - Expiration dates on pantry items
 - Recipe scaling (cook N servings)

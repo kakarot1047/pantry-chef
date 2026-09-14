@@ -1,11 +1,15 @@
 # Pantry Chef
 
+
+Built as part of our Project 1 Submission to CSCE 606-600 course, Fall 2026 at Texas A&M University. 
+
 A plain Ruby terminal application that tracks the ingredients in your pantry and your recipes, tells you which recipes you can cook right now, which ones you are almost able to cook and what is missing, and deducts ingredients from the pantry only after a successful cook.
 
+
 ## Team
-- Gokulan Valavan — recipes, duplicate protection, terminal CLI (repository owner)
-- Bhaumik Patel — pantry management, pantry validation, JSON persistence
-- Yashas Suresh — cookable and almost-makeable matching, cooking
+- Gokulan Valavan - recipes, duplicate protection, terminal CLI (repository owner)
+- Bhaumik Patel - pantry management, pantry validation, JSON persistence
+- Yashas Suresh - cookable and almost-makeable matching, cooking
 
 See `docs/user_stories.md` for all nine stories, owners and points, `docs/planning.md` for the plan, and `docs/design.md` for how the classes fit together.
 
@@ -106,13 +110,17 @@ single envelope:
 ```
 
 `Storage#load` returns that hash rather than rebuilt objects, so `main.rb` is what calls
-`Pantry.from_h` and `RecipeBook.from_h`. No unit conversion is performed. See `docs/design.md`.
+`Pantry.from_h` and `RecipeBook.from_h`; a corrupt file is reported there and the program
+exits rather than raising. Mutating commands are all-or-nothing: if a save fails, the CLI
+restores its in-memory state, so the file on disk is always the authority and retrying a
+failed command cannot apply it twice. No unit conversion is performed. See `docs/design.md`.
 
 ## Status
-All five core features are implemented and merged: pantry management with validation, JSON
-persistence, recipe management with duplicate protection, cookable and almost-makeable
-matching with shortages, and atomic cooking, all reachable from the terminal menu.
-`docs/backlog.md` is the authoritative per-story status.
+Complete. All nine stories (24 points) are implemented, reviewed and merged into `main`:
+pantry management with validation, JSON persistence, recipe management with duplicate
+protection, cookable and almost-makeable matching with shortages, atomic cooking, and the
+terminal menu over all of it. `docs/backlog.md` is the authoritative per-story status and
+`docs/retrospective.md` records what we would do differently.
 
 ## Limitations
 - No unit conversion; quantities are comparable only when units match after normalization.

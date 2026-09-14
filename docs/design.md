@@ -4,7 +4,9 @@ This describes the system as built and merged, not as originally proposed.
 
 ## Overview
 `main.rb` loads saved state through `Storage`, reconstructs the domain objects from it, and
-hands them to the CLI. Domain classes hold state and rules and perform no terminal I/O.
+hands them to the CLI. A corrupt or unreadable data file is caught there: the program prints
+a readable message and exits non-zero rather than raising through to a stack trace. Domain
+classes hold state and rules and perform no terminal I/O.
 `Storage` serializes the whole application state to one JSON file.
 
 ```
@@ -57,8 +59,16 @@ file loads as empty state; corrupt data or I/O failure raises `PantryChef::Stora
 **CLI** (Gokulan) — menu loop over injected `input`/`output` streams. `run_command(line)`
 parses one line, dispatches through a command table, and is the single place that rescues
 `ValidationError` and `StorageError`, so no invalid input ends the session. Mutating
-commands persist immediately. It parses command text and formats output; it contains no
-business rules.
+commands run through `persist_change`, which snapshots both domain objects, applies the
+change, saves, and restores the snapshot in place if the save raises — so a failed write
+never leaves memory and disk disagreeing, and a retry cannot apply the same change twice.
+Restoring in place rather than rebuilding matters because `MatchEngine` holds references to
+the same `Pantry` and `RecipeBook`. It parses command text and formats output; it contains
+no business rules.
+
+**CLIFormatting** (Gokulan) — a module included by `CLI`, holding the pure text handling:
+parsing an ingredient list from command text (rejecting an ingredient listed twice) and
+rendering shortages and consumed amounts for display. No state, no rules, no I/O.
 
 ## Command surface
 | Group | Commands |
@@ -117,5 +127,10 @@ terminate the loop.
 - Quantity parsing lives in the domain classes, which accept numeric strings, so the CLI
   passes raw tokens through instead of duplicating validation.
 - One shared error class in its own file, so no class reopens it with a different parent.
+- Mutating commands are all-or-nothing: the CLI rolls its in-memory state back when a save
+  fails, so the file on disk is always the authority on what happened.
+- Duplicate detection happens twice by design: `CLIFormatting` rejects an ingredient typed
+  twice in one command line, and `Recipe` rejects two keys that normalize to the same name.
+  The first is about the input text, the second about the data structure.
 - `almost_makeable` defaults to one missing ingredient; the CLI's `almost` command passes 2
   to match the documented story default without changing the engine.
