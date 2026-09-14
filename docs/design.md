@@ -1,45 +1,101 @@
 # Design
 
+This describes the system as built and merged, not as originally proposed.
+
 ## Overview
-`main.rb` constructs the domain objects and hands them to the CLI. Domain classes hold state and rules and perform no terminal I/O. `Storage` serializes the whole application state to one JSON file.
+`main.rb` loads saved state through `Storage`, reconstructs the domain objects from it, and
+hands them to the CLI. Domain classes hold state and rules and perform no terminal I/O.
+`Storage` serializes the whole application state to one JSON file.
 
 ```
-main.rb → CLI(pantry:, recipe_book:, match_engine:, storage:, input:, output:)
+main.rb → Storage#load → { "pantry" => ..., "recipes" => ... }
+        → Pantry.from_h / RecipeBook.from_h
+        → CLI(pantry:, recipe_book:, match_engine:, storage:, input:, output:)
             ├─ Pantry        what the user has
-            ├─ RecipeBook    what the user can make (Recipe objects)
-            ├─ MatchEngine   Pantry × RecipeBook → cookable / almost / shortages / cook
-            └─ Storage       load and save Pantry + RecipeBook as JSON
+            ├─ RecipeBook    what the user knows how to make (Recipe objects)
+            ├─ MatchEngine   Pantry × RecipeBook → cookable / almost-makeable / cook
+            └─ Storage       load and save the whole state as JSON
 ```
+
+Note that `Storage#load` returns the raw state hash rather than rebuilt objects; converting
+it into a `Pantry` and a `RecipeBook` is the caller's job, which in practice means `main.rb`.
+This keeps `Storage` independent of the recipe classes.
 
 ## Responsibilities
 
-**Pantry** (Bhaumik) — holds pantry items keyed by normalized name (`"flour" => { "quantity" => 400, "unit" => "g" }`). Adds, updates, removes, lists. Validates names, quantities and units and refuses unit mismatches. Provides quantity/unit lookup so MatchEngine can compare requirements. Serializes with `to_h` / `from_h`.
+**Pantry** (Bhaumik) — holds items keyed by normalized name
+(`"flour" => { "quantity" => 400, "unit" => "g" }`). `add_item` is additive and requires a
+matching unit; `update_item` sets an absolute quantity and may relabel the unit without
+converting; `remove_item`, `get_item`, `sufficient?` and `consume` round out the API, and
+`items` is an alias of `to_h`. Lookups and listings return copies. Validates names, units
+and quantities, accepting numeric strings so the CLI never has to parse numbers.
 
-**Recipe** (Gokulan) — value object: `Recipe.new(name:, servings:, ingredients:)`. `ingredients` is a hash keyed by normalized ingredient name with `"quantity"` and `"unit"`. Validates blank name, non-positive servings, malformed ingredients, non-positive quantities, blank units. `to_h` / `Recipe.from_h`.
+**Recipe** (Gokulan) — immutable value object: `Recipe.new(name:, servings:, ingredients:)`.
+Names and units are trimmed and lowercased and the object, its ingredient hash and its
+strings are frozen; `to_h` returns independent string copies. Rejects blank names, servings
+that are not positive whole numbers, malformed ingredient entries, non-positive or
+non-finite quantities, blank units, and the same ingredient listed twice under different
+casing.
 
-**RecipeBook** (Gokulan) — `RecipeBook.new(recipes = [])`, `add(recipe)`, `find(name)`, `all`, `to_h`, `RecipeBook.from_h`. Lookup is case-insensitive; adding a duplicate name raises and leaves the book unchanged.
+**RecipeBook** (Gokulan) — `new(recipes = [])`, `add`, `find` (case-insensitive), `all`
+(sorted), `size`, `empty?`, `to_h`, `from_h`. Adding a duplicate name raises and leaves the
+book unchanged, including through the constructor.
 
-**MatchEngine** (Yashas) — constructed with a Pantry and a RecipeBook. Reports cookable recipes, almost-makeable recipes with their shortages (ingredient, missing quantity, unit), and performs an atomic cook: verify every requirement first, deduct only if all are satisfied.
+**MatchEngine** (Yashas) — `new(pantry:, recipe_book:)`. `shortages_for(recipe)` returns
+`name => { "required", "available", "shortage", "unit" }` for uncovered requirements;
+`cookable?`, `cookable_recipes`; `almost_makeable(max_missing: 1)` returns
+`[{ "recipe" => Recipe, "shortages" => {...} }]` excluding fully cookable recipes and
+raising on a non-positive threshold; `cook(recipe_name)` takes a name, validates every
+requirement first, then consumes, returning `{ "recipe" => Recipe, "consumed" => {...} }`.
+A unit mismatch counts as fully uncovered. Nothing is deducted unless everything is
+available.
 
-**Storage** (Bhaumik) — `save(pantry, recipe_book)` and `load` against a JSON path. Missing file → empty state; malformed file → useful error or warning.
+**Storage** (Bhaumik) — `save(pantry, recipe_book)` and `load` against a JSON path. Writes
+through a temporary file in the destination directory renamed over the target. A missing
+file loads as empty state; corrupt data or I/O failure raises `PantryChef::StorageError`.
 
-**CLI** (Gokulan) — menu loop over injected `input`/`output` streams. Parses a selection, calls the relevant domain method, prints the result, persists after mutating actions, and handles invalid input and EOF without crashing. Contains no business rules.
+**CLI** (Gokulan) — menu loop over injected `input`/`output` streams. `run_command(line)`
+parses one line, dispatches through a command table, and is the single place that rescues
+`ValidationError` and `StorageError`, so no invalid input ends the session. Mutating
+commands persist immediately. It parses command text and formats output; it contains no
+business rules.
+
+## Command surface
+| Group | Commands |
+|-------|----------|
+| Pantry | `pantry`, `add <name> <qty> <unit>`, `update <name> <qty> [unit]`, `remove <name>` |
+| Recipes | `recipes`, `show-recipe <name>`, `add-recipe <name> <servings> "<item qty unit>, ..."` |
+| Matching | `can-make`, `almost [n]` |
+| Cooking | `cook <name>` |
+| Other | `help`, `quit` / `exit`, and end-of-input |
 
 ## Shared interface contract
 ```ruby
-Recipe.new(name:, servings:, ingredients:)
-recipe.name / recipe.servings / recipe.ingredients / recipe.to_h
+Pantry.new(items = {}) / add_item / update_item / remove_item / get_item
+Pantry#sufficient?(name, quantity, unit) / consume(name, quantity, unit)
+Pantry#to_h (aliased items) / Pantry.from_h(hash)
+
+Recipe.new(name:, servings:, ingredients:) / name / servings / ingredients / to_h
 Recipe.from_h(hash)
 
-RecipeBook.new(recipes = [])
-recipe_book.add(recipe) / find(name) / all / to_h
+RecipeBook.new(recipes = []) / add / find / all / size / empty? / to_h
 RecipeBook.from_h(hash)
 
+MatchEngine.new(pantry:, recipe_book:)
+MatchEngine#shortages_for / cookable? / cookable_recipes
+MatchEngine#almost_makeable(max_missing: 1) / cook(recipe_name)
+
+Storage.new(path = Storage::DEFAULT_PATH) / save(pantry, recipe_book) / load
+
 CLI.new(pantry:, recipe_book:, match_engine:, storage:, input: $stdin, output: $stdout)
+CLI#run / run_command(line)
 ```
 Ingredient representation everywhere: `{ "flour" => { "quantity" => 400, "unit" => "g" } }`.
 
 ## JSON file shape
+`RecipeBook#to_h` returns the map keyed by recipe name; `Storage` adds the top-level
+`"recipes"` key, so there is exactly one envelope and no nested wrapper:
+
 ```json
 {
   "pantry":  { "flour": { "quantity": 400, "unit": "g" } },
@@ -49,9 +105,17 @@ Ingredient representation everywhere: `{ "flour" => { "quantity" => 400, "unit" 
 ```
 
 ## Error handling
-Domain classes raise a project-specific error (e.g. `PantryChef::ValidationError`) for invalid input. The CLI is the single place that rescues it and prints a message, so sad paths never terminate the loop.
+`PantryChef::ValidationError < ArgumentError` (`lib/validation_error.rb`) is raised by every
+domain class for invalid input; `PantryChef::StorageError` covers corrupt files and I/O
+failures. The CLI rescues both in `run_command` and prints a message, so sad paths never
+terminate the loop.
 
 ## Decisions
-- No unit conversion (out of scope; units must match after normalization).
-- Save after every mutating action rather than at exit, so a crash does not lose data.
+- No unit conversion; units must match after normalization.
+- Save after every mutating command rather than at exit, so a crash does not lose data.
 - Names normalized (trimmed, lowercased) at the domain boundary so lookups are consistent.
+- Quantity parsing lives in the domain classes, which accept numeric strings, so the CLI
+  passes raw tokens through instead of duplicating validation.
+- One shared error class in its own file, so no class reopens it with a different parent.
+- `almost_makeable` defaults to one missing ingredient; the CLI's `almost` command passes 2
+  to match the documented story default without changing the engine.
