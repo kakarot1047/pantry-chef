@@ -6,8 +6,7 @@ repository history; the judgement sections are for the team to complete together
 ## What happened
 - The application itself was small and came together quickly once interfaces were agreed:
   six classes, roughly 24 story points, all five core features working end to end.
-- Process artifacts were started on 2026-09-11 for a 2026-09-14 deadline, which is late
-  relative to the coding itself.
+
 - Agreeing the class interfaces in `docs/design.md` before splitting the work let three
   people build in parallel without blocking on each other. Yashas's MatchEngine was written
   against teammate branches before they merged and needed no rework at integration.

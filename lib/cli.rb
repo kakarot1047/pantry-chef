@@ -1,8 +1,8 @@
 # frozen_string_literal: true
+
 require_relative 'validation_error'
 require_relative 'storage'
 require_relative 'recipe'
-
 
 module PantryChef
   # Terminal menu. Holds no business rules; delegates to the domain objects it is constructed with.
@@ -20,8 +20,8 @@ module PantryChef
       'can-make' => :show_cookable,
       'almost' => :show_almost,
       'cook' => :cook
-  }.freeze
-  
+    }.freeze
+
     EXIT_COMMANDS = %w[quit exit].freeze
     DEFAULT_MAX_MISSING = 2
 

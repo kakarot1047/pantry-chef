@@ -12,3 +12,11 @@ Metrics/BlockLength:
 
 Layout/LineLength:
   Max: 110
+
+Metrics/ParameterLists:
+  # The CLI constructor's six injected collaborators are the agreed interface contract.
+  CountKeywordArgs: false
+
+Metrics/ClassLength:
+  # lib/cli.rb is one short method per command; splitting it would hide the dispatch table.
+  Max: 150

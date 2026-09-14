@@ -1,6 +1,3 @@
-
-# Entry point for Pantry Chef.
-
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
