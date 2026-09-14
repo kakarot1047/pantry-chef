@@ -3,11 +3,14 @@
 require_relative 'validation_error'
 require_relative 'storage'
 require_relative 'recipe'
+require_relative 'cli_formatting'
 
 module PantryChef
   # Terminal menu. Holds no business rules; delegates to the domain objects it is constructed with.
   # Owner: Gokulan — "Build terminal CLI".
   class CLI
+    include CLIFormatting
+
     COMMANDS = {
       'help' => :show_help,
       'pantry' => :show_pantry,
@@ -95,8 +98,7 @@ module PantryChef
       name, quantity, unit = rest.split(/\s+/, 3)
       raise ValidationError, 'Usage: add <name> <qty> <unit>' if unit.nil?
 
-      item = @pantry.add_item(name, quantity, unit)
-      persist
+      item = persist_change { @pantry.add_item(name, quantity, unit) }
       @output.puts "Stocked #{name}: #{item['quantity']} #{item['unit']}"
     end
 
@@ -104,16 +106,14 @@ module PantryChef
       name, quantity, unit = rest.split(/\s+/, 3)
       raise ValidationError, 'Usage: update <name> <qty> [unit]' if quantity.nil?
 
-      item = @pantry.update_item(name, quantity, unit)
-      persist
+      item = persist_change { @pantry.update_item(name, quantity, unit) }
       @output.puts "Updated #{name}: #{item['quantity']} #{item['unit']}"
     end
 
     def remove_item(rest)
       raise ValidationError, 'Usage: remove <name>' if rest.empty?
 
-      item = @pantry.remove_item(rest)
-      persist
+      item = persist_change { @pantry.remove_item(rest) }
       @output.puts "Removed #{rest} (was #{item['quantity']} #{item['unit']})"
     end
 
@@ -139,18 +139,8 @@ module PantryChef
       raise ValidationError, 'Usage: add-recipe <name> <servings> "<item qty unit>, ..."' if spec.nil?
 
       recipe = Recipe.new(name: name, servings: servings, ingredients: parse_ingredients(spec))
-      @recipe_book.add(recipe)
-      persist
+      persist_change { @recipe_book.add(recipe) }
       @output.puts "Added recipe #{recipe.name}."
-    end
-
-    def parse_ingredients(spec)
-      spec.delete('"').split(',').to_h do |part|
-        name, quantity, unit = part.strip.split(/\s+/, 3)
-        raise ValidationError, "Bad ingredient '#{part.strip}'. Use: <name> <qty> <unit>" if unit.nil?
-
-        [name, { 'quantity' => quantity, 'unit' => unit }]
-      end
     end
 
     def show_cookable(_rest)
@@ -170,24 +160,37 @@ module PantryChef
       end
     end
 
-    def format_shortages(shortages)
-      shortages.map { |name, info| "#{name} (need #{info['shortage']} more #{info['unit']})" }.join(', ')
-    end
-
     def cook(rest)
       raise ValidationError, 'Usage: cook <name>' if rest.empty?
 
-      result = @match_engine.cook(rest)
-      persist
+      result = persist_change { @match_engine.cook(rest) }
       @output.puts "Cooked #{result['recipe'].name}. Used #{format_consumed(result['consumed'])}."
     end
 
-    def format_consumed(consumed)
-      consumed.map { |name, need| "#{name} #{need['quantity']} #{need['unit']}" }.join(', ')
+    # Applies a change and saves it. If the save fails the in-memory state is put
+    # back, so memory and disk never disagree and a retry cannot double-apply.
+    def persist_change
+      snapshot = [@pantry.to_h, @recipe_book.to_h]
+      result = yield
+      @storage.save(@pantry, @recipe_book)
+      result
+    rescue StorageError
+      restore(*snapshot)
+      raise
     end
 
-    def persist
-      @storage.save(@pantry, @recipe_book)
+    def restore(pantry_state, recipe_state)
+      (@pantry.to_h.keys - pantry_state.keys).each { |name| @pantry.remove_item(name) }
+      pantry_state.each { |name, item| restore_item(name, item) }
+      (@recipe_book.to_h.keys - recipe_state.keys).each { |name| @recipe_book.delete(name) }
+    end
+
+    def restore_item(name, item)
+      if @pantry.get_item(name)
+        @pantry.update_item(name, item['quantity'], item['unit'])
+      else
+        @pantry.add_item(name, item['quantity'], item['unit'])
+      end
     end
   end
 end

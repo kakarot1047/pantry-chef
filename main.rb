@@ -6,9 +6,16 @@ require_relative 'lib/match_engine'
 require_relative 'lib/recipe_book'
 
 storage = PantryChef::Storage.new(ARGV[0] || PantryChef::Storage::DEFAULT_PATH)
-state = storage.load
-pantry = PantryChef::Pantry.from_h(state['pantry'])
-recipe_book = PantryChef::RecipeBook.from_h(state['recipes'])
+
+begin
+  state = storage.load
+  pantry = PantryChef::Pantry.from_h(state['pantry'])
+  recipe_book = PantryChef::RecipeBook.from_h(state['recipes'])
+rescue PantryChef::StorageError, PantryChef::ValidationError => e
+  warn "Pantry Chef could not start: #{e.message}"
+  warn 'Fix or move the saved data file, then run again.'
+  exit 1
+end
 
 PantryChef::CLI.new(
   pantry: pantry,

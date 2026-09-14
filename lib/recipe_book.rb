@@ -22,6 +22,15 @@ module PantryChef
       @recipes[recipe.name] = recipe
     end
 
+    # Removes a recipe by name and returns it, or nil when absent.
+    # Used to roll back an addition whose save failed.
+    def delete(name)
+      key = name.to_s.strip.downcase
+      return nil if key.empty?
+
+      @recipes.delete(key)
+    end
+
     def find(name)
       key = name.to_s.strip.downcase
       return nil if key.empty?

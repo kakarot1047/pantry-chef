@@ -156,4 +156,82 @@ RSpec.describe PantryChef::CLI do
       expect(reloaded_book.all.map(&:name)).to eq(['flatbread'])
     end
   end
+
+  describe 'save failures' do
+    let(:failing_storage) do
+      Class.new(PantryChef::Storage) do
+        attr_accessor :fail_after
+
+        def initialize(path)
+          super
+          @saves = 0
+          @fail_after = 0
+        end
+
+        def save(pantry, recipe_book)
+          @saves += 1
+          raise PantryChef::StorageError, 'disk full (simulated)' if @saves > @fail_after
+
+          super
+        end
+      end.new(File.join(@dir, 'data', 'pantry_chef.json'))
+    end
+
+    def cli_with_failing_storage
+      PantryChef::CLI.new(pantry: pantry, recipe_book: recipe_book, match_engine: engine,
+                          storage: failing_storage, input: StringIO.new, output: output)
+    end
+
+    it 'reports the failure and leaves the pantry unchanged' do
+      failing_storage.fail_after = 1
+      subject = cli_with_failing_storage
+      subject.run_command('add flour 500 g')
+      subject.run_command('add flour 100 g')
+
+      expect(output.string).to include('Error:')
+      expect(pantry.get_item('flour')['quantity']).to eq(500.0)
+    end
+
+    it 'does not double-apply when the user retries' do
+      failing_storage.fail_after = 1
+      subject = cli_with_failing_storage
+      subject.run_command('add flour 500 g')
+      2.times { subject.run_command('add flour 100 g') }
+
+      expect(pantry.get_item('flour')['quantity']).to eq(500.0)
+    end
+
+    it 'rolls back an added recipe and keeps the existing ones' do
+      failing_storage.fail_after = 1
+      subject = cli_with_failing_storage
+      subject.run_command('add-recipe flatbread 2 "flour 200 g"')
+      subject.run_command('add-recipe cake 1 "flour 1 g"')
+
+      expect(recipe_book.find('cake')).to be_nil
+      expect(recipe_book.find('flatbread')).not_to be_nil
+    end
+
+    it 'rolls back a cook so memory matches disk' do
+      failing_storage.fail_after = 2
+      subject = cli_with_failing_storage
+      subject.run_command('add flour 500 g')
+      subject.run_command('add-recipe flatbread 2 "flour 200 g"')
+      subject.run_command('cook flatbread')
+
+      expect(pantry.get_item('flour')['quantity']).to eq(500.0)
+      expect(engine.cookable_recipes.map(&:name)).to eq(['flatbread'])
+    end
+  end
+
+  describe 'duplicate ingredients in one recipe' do
+    it 'rejects the same ingredient listed twice' do
+      expect(run('add-recipe bread 1 "flour 400 g, flour 1 g"')).to include('listed twice')
+      expect(recipe_book).to be_empty
+    end
+
+    it 'rejects it regardless of casing' do
+      expect(run('add-recipe bread 1 "flour 400 g, FLOUR 1 g"')).to include('listed twice')
+      expect(recipe_book).to be_empty
+    end
+  end
 end
