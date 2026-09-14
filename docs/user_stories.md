@@ -87,7 +87,8 @@ Acceptance criteria:
 As a home cook, I want to see recipes I am close to making and what I lack so I know what to buy.
 
 Acceptance criteria:
-- A recipe missing at most N ingredients (default 2) is listed as almost-makeable.
+- A recipe missing at most N ingredients is listed as almost-makeable. `MatchEngine#almost_makeable`
+  defaults to 1; the CLI's `almost` command passes 2, so the user-facing default is 2 as specified.
 - Each shortage names the ingredient, the missing quantity, and the unit.
 - Fully cookable recipes are not listed as almost-makeable.
 - Mismatched units count as a shortage; no unit conversion is attempted.

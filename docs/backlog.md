@@ -1,24 +1,27 @@
 # Backlog
 
-Status values: `To Do`, `In Progress`, `In Review`, `Done`. Update the row when a PR is opened or merged. Link the GitHub issue once created.
+Status values: `To Do`, `In Progress`, `In Review`, `Done`. Update the row when a PR is opened or merged.
 
-| # | Story | Owner | Points | Status | Issue |
-|---|-------|-------|-------:|--------|-------|
-| 1 | Manage pantry items | Bhaumik | 3 | In Review | |
-| 2 | Validate pantry input | Bhaumik | 2 | In Review | |
-| 3 | Save and load pantry and recipes using JSON | Bhaumik | 3 | In Progress | |
-| 4 | Add and view recipes | Gokulan | 3 | In Review | |
-| 5 | Reject duplicate recipes | Gokulan | 2 | In Review | |
-| 6 | Build terminal CLI | Gokulan | 3 | To Do | |
-| 7 | Show recipes that can be made | Yashas | 3 | In Review | |
-| 8 | Show almost-makeable recipes and shortages | Yashas | 2 | In Review | |
-| 9 | Cook a recipe atomically and deduct ingredients | Yashas | 3 | In Review | |
+| # | Story | Owner | Points | Status | PR |
+|---|-------|-------|-------:|--------|----|
+| 1 | Manage pantry items | Bhaumik | 3 | Done | [#2](https://github.com/kakarot1047/pantry-chef/pull/2) |
+| 2 | Validate pantry input | Bhaumik | 2 | Done | [#2](https://github.com/kakarot1047/pantry-chef/pull/2) |
+| 3 | Save and load pantry and recipes using JSON | Bhaumik | 3 | Done | [#2](https://github.com/kakarot1047/pantry-chef/pull/2) |
+| 4 | Add and view recipes | Gokulan | 3 | Done | [#5](https://github.com/kakarot1047/pantry-chef/pull/5) |
+| 5 | Reject duplicate recipes | Gokulan | 2 | Done | [#5](https://github.com/kakarot1047/pantry-chef/pull/5) |
+| 6 | Build terminal CLI | Gokulan | 3 | In Review | |
+| 7 | Show recipes that can be made | Yashas | 3 | Done | [#6](https://github.com/kakarot1047/pantry-chef/pull/6) |
+| 8 | Show almost-makeable recipes and shortages | Yashas | 2 | Done | [#6](https://github.com/kakarot1047/pantry-chef/pull/6) |
+| 9 | Cook a recipe atomically and deduct ingredients | Yashas | 3 | Done | [#6](https://github.com/kakarot1047/pantry-chef/pull/6) |
 
-Total: 24 points (Bhaumik 8, Gokulan 8, Yashas 8).
+Total: 24 points (Bhaumik 8, Gokulan 8, Yashas 8). Completed and merged: 21 points.
+Story 6 moves to `Done` once its pull request is reviewed and merged.
 
-Issue links are blank because issue numbers have not been confirmed against the tracker.
-Fill each cell in once the matching issue is verified; no number has been assumed.
-No story is marked `Done`: no pull request has been reviewed, merged, or closed an issue.
+Caveat on the definition of done: `docs/planning.md` also requires the matching issue to be
+closed. Story issues were not found in the tracker by any teammate, so no issue numbers were
+assumed and no issue links are recorded. Every other condition — acceptance criteria covered
+by passing specs, `rspec` and `rubocop` green, PR merged into `main` — is met for the eight
+stories marked Done.
 
 ## Bhaumik implementation update - 2026-09-12
 
@@ -27,13 +30,8 @@ No story is marked `Done`: no pull request has been reviewed, merged, or closed 
 - Story 2: blank fields, invalid/nonfinite quantities, mismatched units, insufficient
   consumption, and unchanged state after rejected operations implemented and tested.
 - Story 3: load/save, missing-file defaults, corruption handling, atomic replacement,
-  failure cleanup, and pantry restart workflow implemented and tested. Real RecipeBook
-  reconstruction and CLI startup/save integration remain To Do after teammate work lands.
-- Stories 1 and 2 are In Review in [draft PR #2](https://github.com/kakarot1047/pantry-chef/pull/2).
-  Story 3 remains In Progress pending real RecipeBook/CLI integration. None is marked Done:
-  PR review/merge and issue closure have not occurred. Remote main was verified as the
-  foundation commit used for this branch. Exact-title issue lookup returned no matches;
-  no issue numbers were assumed. See `bhaumik_handoff.md` for evidence.
+  failure cleanup, and pantry restart workflow implemented and tested.
+- Merged into `main` on 2026-09-14 via PR #2.
 
 ## Gokulan implementation update - 2026-09-13
 
@@ -43,10 +41,11 @@ No story is marked `Done`: no pull request has been reviewed, merged, or closed 
   case-insensitively, lists sorted, and serializes as a map keyed by recipe name.
 - Story 5: duplicate names are rejected ignoring case, from both `add` and the
   constructor; the existing recipe is left unchanged and exactly one remains.
-- Both are In Review in [PR #5](https://github.com/kakarot1047/pantry-chef/pull/5),
-  which is not merged. Neither is Done.
-- Story 6 (terminal CLI) remains To Do and is blocked on Yashas's matching and
-  cooking work in addition to the pantry and storage work above.
+- Review feedback addressed before merge: `ValidationError` re-parented to `ArgumentError`,
+  the duplicate `lib/errors.rb` dropped in favour of `lib/validation_error.rb`, the
+  redundant `"recipes"` wrapper removed from `RecipeBook#to_h`, non-finite quantities
+  rejected, and recipe strings frozen with `to_h` returning independent copies.
+- Merged into `main` on 2026-09-14 via PR #5.
 
 ## Yashas implementation update - 2026-09-13
 
@@ -56,11 +55,18 @@ No story is marked `Done`: no pull request has been reviewed, merged, or closed 
   with 1..max_missing short ingredient names; cookable recipes are excluded;
   non-positive thresholds raise `ValidationError`.
 - Story 9: `#cook(recipe_name)` finds case-insensitively, validates all shortages
-  first, then consumes through `Pantry#consume`; failures leave pantry unchanged.
-- Stories 7–9 are In Review in [PR #6](https://github.com/kakarot1047/pantry-chef/pull/6).
-  Not Done: PR review/merge and issue closure have not occurred. Issue links left blank
-  because Yashas story issues were not found in the tracker. Built against
-  Pantry/Recipe/RecipeBook interfaces from teammate branches (PRs #2 and #5).
+  first, then consumes through `Pantry#consume`; failures leave the pantry unchanged.
+- Merged into `main` on 2026-09-14 via PR #6.
+
+## Gokulan implementation update - 2026-09-14
+
+- Story 6: `CLI` runs a menu loop over injected `input`/`output` streams, dispatches
+  through a command table, and rescues `ValidationError` and `StorageError` in one place
+  so no invalid input ends the session. `main.rb` loads state through `Storage`,
+  reconstructs `Pantry` and `RecipeBook` from it, and wires both into `MatchEngine`.
+  Mutating commands persist immediately. No business rules live in the CLI.
+- `MatchEngine#almost_makeable` defaults to `max_missing: 1`; the `almost` command passes
+  `2` explicitly so the documented story-8 default holds without changing his class.
 
 ## Icebox — stretch features (not in this project)
 - Shopping list generated from shortages

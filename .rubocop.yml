@@ -12,3 +12,15 @@ Metrics/BlockLength:
 
 Layout/LineLength:
   Max: 110
+
+Layout/EndOfLine:
+  # .gitattributes enforces eol=lf, so the cop must not expect native CRLF on Windows.
+  EnforcedStyle: lf
+
+Metrics/ParameterLists:
+  # The CLI constructor's six injected collaborators are the agreed interface contract.
+  CountKeywordArgs: false
+
+Metrics/ClassLength:
+  # lib/cli.rb is one short method per command; splitting it would hide the dispatch table.
+  Max: 150
