@@ -1,6 +1,9 @@
 # Planning
 
 ## Goal
+
+Built as part of our Project 1 Submission to CSCE 606-600 course, Fall 2026 at Texas A&M University. 
+
 A plain Ruby terminal application that tracks pantry ingredients and recipes, shows which recipes can be cooked now, which are almost possible and what is missing, and deducts ingredients only after a successful cook.
 
 ## MVP

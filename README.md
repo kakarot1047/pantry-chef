@@ -1,11 +1,15 @@
 # Pantry Chef
 
+
+Built as part of our Project 1 Submission to CSCE 606-600 course, Fall 2026 at Texas A&M University. 
+
 A plain Ruby terminal application that tracks the ingredients in your pantry and your recipes, tells you which recipes you can cook right now, which ones you are almost able to cook and what is missing, and deducts ingredients from the pantry only after a successful cook.
 
+
 ## Team
-- Gokulan Valavan — recipes, duplicate protection, terminal CLI (repository owner)
-- Bhaumik Patel — pantry management, pantry validation, JSON persistence
-- Yashas Suresh — cookable and almost-makeable matching, cooking
+- Gokulan Valavan - recipes, duplicate protection, terminal CLI (repository owner)
+- Bhaumik Patel - pantry management, pantry validation, JSON persistence
+- Yashas Suresh - cookable and almost-makeable matching, cooking
 
 See `docs/user_stories.md` for all nine stories, owners and points, `docs/planning.md` for the plan, and `docs/design.md` for how the classes fit together.
 
