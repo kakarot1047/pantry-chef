@@ -5,5 +5,3 @@ Record each real pair-programming session. Do not add sessions that did not happ
 | Date | Driver | Navigator | Story / topic | What was done | Commits / PR |
 |------|--------|-----------|---------------|---------------|--------------|
 | | | | | | |
-
-
