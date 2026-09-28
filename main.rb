@@ -1,12 +1,16 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+# Starts Pantry Chef: loads the save file, builds the objects, and runs the menu.
+# Pass a file path as the first argument to use a different save file.
+
 require_relative 'lib/cli'
 require_relative 'lib/match_engine'
 require_relative 'lib/recipe_book'
 
 storage = PantryChef::Storage.new(ARGV[0] || PantryChef::Storage::DEFAULT_PATH)
 
+# A broken save file stops startup with a clear message instead of a stack trace.
 begin
   state = storage.load
   pantry = PantryChef::Pantry.from_h(state['pantry'])

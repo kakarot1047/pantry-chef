@@ -3,9 +3,10 @@
 require_relative 'validation_error'
 
 module PantryChef
-  # Compares a Pantry against a RecipeBook: cookable recipes, almost-makeable recipes, shortages.
-  # Owner: Yashas — "Show recipes that can be made", "Show almost-makeable recipes", "Cook a recipe".
+  # Compares the pantry with the recipe book to work out what you can cook and what is missing.
+  # Owner: Yashas (Show recipes that can be made, Show almost-makeable recipes, Cook a recipe).
   class MatchEngine
+    # Works on the same pantry and recipe book objects the CLI uses.
     def initialize(pantry:, recipe_book:)
       @pantry = pantry
       @recipe_book = recipe_book
@@ -20,10 +21,12 @@ module PantryChef
       end
     end
 
+    # True when nothing is missing.
     def cookable?(recipe)
       shortages_for(recipe).empty?
     end
 
+    # Every recipe we could make right now.
     def cookable_recipes
       @recipe_book.all.select { |recipe| cookable?(recipe) }
     end
@@ -41,7 +44,8 @@ module PantryChef
       end
     end
 
-    # Atomically cook by case-insensitive name. Validates all requirements before any consume.
+    # Cooks a recipe by name. Every ingredient is checked before anything is used up,
+    # so a failed cook never leaves the pantry half used.
     def cook(recipe_name)
       recipe = find_recipe!(recipe_name)
       reject_if_shortages!(recipe)
@@ -51,6 +55,7 @@ module PantryChef
 
     private
 
+    # How short we are on one ingredient, or nil if we have enough.
     def shortage_detail(name, requirement)
       required = requirement['quantity']
       unit = requirement['unit']
@@ -65,6 +70,7 @@ module PantryChef
       }
     end
 
+    # How much we have in the unit the recipe asks for. A different unit counts as zero.
     def available_quantity(name, unit)
       item = @pantry.get_item(name)
       return 0 if item.nil? || item['unit'] != unit
@@ -72,6 +78,7 @@ module PantryChef
       item['quantity']
     end
 
+    # Finds the recipe, or raises a clear error if it does not exist.
     def find_recipe!(recipe_name)
       recipe = @recipe_book.find(recipe_name)
       return recipe if recipe
@@ -79,6 +86,7 @@ module PantryChef
       raise ValidationError, "Recipe not found: #{recipe_name.to_s.strip.downcase}"
     end
 
+    # Raises with the full list of what is missing, so the user knows what to buy.
     def reject_if_shortages!(recipe)
       shortages = shortages_for(recipe)
       return if shortages.empty?
@@ -89,12 +97,14 @@ module PantryChef
       raise ValidationError, "Cannot cook '#{recipe.name}': missing #{details}"
     end
 
+    # Takes each ingredient out of the pantry. Only runs once the checks have passed.
     def consume_all!(recipe)
       recipe.ingredients.each do |name, requirement|
         @pantry.consume(name, requirement['quantity'], requirement['unit'])
       end
     end
 
+    # The limit for "almost" has to be a positive whole number.
     def validate_max_missing!(max_missing)
       return if max_missing.is_a?(Integer) && max_missing.positive?
 

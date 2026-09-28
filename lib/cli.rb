@@ -6,11 +6,13 @@ require_relative 'recipe'
 require_relative 'cli_formatting'
 
 module PantryChef
-  # Terminal menu. Holds no business rules; delegates to the domain objects it is constructed with.
-  # Owner: Gokulan — "Build terminal CLI".
+  # The terminal menu. It reads a command, hands it to the right object, and prints the result.
+  # It has no business rules of its own.
+  # Owner: Gokulan (Build terminal CLI).
   class CLI
     include CLIFormatting
 
+    # Each command word and the method that handles it.
     COMMANDS = {
       'help' => :show_help,
       'pantry' => :show_pantry,
@@ -25,9 +27,12 @@ module PantryChef
       'cook' => :cook
     }.freeze
 
+    # Words that end the session.
     EXIT_COMMANDS = %w[quit exit].freeze
+    # "almost" shows recipes missing up to this many ingredients unless you give a number.
     DEFAULT_MAX_MISSING = 2
 
+    # What help prints. Same grouping as the README.
     MENU = <<~MENU
       Pantry:   pantry | add <name> <qty> <unit> | update <name> <qty> [unit] | remove <name>
       Recipes:  recipes | show-recipe <name> | add-recipe <name> <servings> "<item qty unit>, ..."
@@ -36,6 +41,7 @@ module PantryChef
       Other:    help | quit
     MENU
 
+    # Input and output are passed in so tests can use strings instead of a real terminal.
     def initialize(pantry:, recipe_book:, match_engine:, storage:, input: $stdin, output: $stdout)
       @pantry = pantry
       @recipe_book = recipe_book
@@ -45,6 +51,7 @@ module PantryChef
       @output = output
     end
 
+    # Keeps reading commands until the user quits or the input runs out.
     def run
       @output.puts 'Pantry Chef. Type `help` for the menu.'
       loop do
@@ -55,8 +62,8 @@ module PantryChef
       @output.puts 'Goodbye.'
     end
 
-    # Runs one line and returns :quit when the user asked to leave.
-    # Every domain error is reported here so the loop never dies.
+    # Runs one line. Returns :quit when the user wants to leave.
+    # Any error from the domain is printed here, so one bad command never ends the session.
     def run_command(line)
       command, rest = split_command(line)
       return if command.nil?
@@ -72,6 +79,7 @@ module PantryChef
 
     private
 
+    # Splits "add flour 500 g" into the command and the rest of the line.
     def split_command(line)
       command, rest = line.to_s.strip.split(/\s+/, 2)
       return [nil, nil] if command.nil? || command.empty?
@@ -79,6 +87,7 @@ module PantryChef
       [command.downcase, rest.to_s.strip]
     end
 
+    # Friendly message for a command we do not recognise.
     def unknown(command)
       @output.puts "Unknown command '#{command}'. Type `help` for the menu."
     end
@@ -87,6 +96,7 @@ module PantryChef
       @output.puts MENU
     end
 
+    # pantry: lists everything we have.
     def show_pantry(_rest)
       items = @pantry.items
       return @output.puts('Pantry is empty.') if items.empty?
@@ -94,6 +104,7 @@ module PantryChef
       items.each { |name, item| @output.puts "  #{name}: #{item['quantity']} #{item['unit']}" }
     end
 
+    # add <name> <qty> <unit>
     def add_item(rest)
       name, quantity, unit = rest.split(/\s+/, 3)
       raise ValidationError, 'Usage: add <name> <qty> <unit>' if unit.nil?
@@ -102,6 +113,7 @@ module PantryChef
       @output.puts "Stocked #{name}: #{item['quantity']} #{item['unit']}"
     end
 
+    # update <name> <qty> [unit]
     def update_item(rest)
       name, quantity, unit = rest.split(/\s+/, 3)
       raise ValidationError, 'Usage: update <name> <qty> [unit]' if quantity.nil?
@@ -110,6 +122,7 @@ module PantryChef
       @output.puts "Updated #{name}: #{item['quantity']} #{item['unit']}"
     end
 
+    # remove <name>
     def remove_item(rest)
       raise ValidationError, 'Usage: remove <name>' if rest.empty?
 
@@ -117,6 +130,7 @@ module PantryChef
       @output.puts "Removed #{rest} (was #{item['quantity']} #{item['unit']})"
     end
 
+    # recipes: lists every recipe and how many it serves.
     def list_recipes(_rest)
       recipes = @recipe_book.all
       return @output.puts('No recipes yet.') if recipes.empty?
@@ -124,6 +138,7 @@ module PantryChef
       recipes.each { |recipe| @output.puts "  #{recipe.name} (serves #{recipe.servings})" }
     end
 
+    # show-recipe <name>: one recipe and what it needs.
     def show_recipe(rest)
       raise ValidationError, 'Usage: show-recipe <name>' if rest.empty?
 
@@ -134,6 +149,7 @@ module PantryChef
       recipe.ingredients.each { |name, need| @output.puts "  #{name}: #{need['quantity']} #{need['unit']}" }
     end
 
+    # add-recipe <name> <servings> "<item qty unit>, ..."
     def add_recipe(rest)
       name, servings, spec = rest.split(/\s+/, 3)
       raise ValidationError, 'Usage: add-recipe <name> <servings> "<item qty unit>, ..."' if spec.nil?
@@ -143,6 +159,7 @@ module PantryChef
       @output.puts "Added recipe #{recipe.name}."
     end
 
+    # can-make: recipes we have everything for.
     def show_cookable(_rest)
       recipes = @match_engine.cookable_recipes
       return @output.puts('Nothing can be made right now.') if recipes.empty?
@@ -150,6 +167,7 @@ module PantryChef
       recipes.each { |recipe| @output.puts "  #{recipe.name}" }
     end
 
+    # almost [n]: recipes we are close to, and what they still need.
     def show_almost(rest)
       max_missing = rest.empty? ? DEFAULT_MAX_MISSING : Integer(rest, exception: false)
       matches = @match_engine.almost_makeable(max_missing: max_missing)
@@ -160,6 +178,7 @@ module PantryChef
       end
     end
 
+    # cook <name>: the engine does the checking, we save and report back.
     def cook(rest)
       raise ValidationError, 'Usage: cook <name>' if rest.empty?
 
@@ -179,12 +198,15 @@ module PantryChef
       raise
     end
 
+    # Puts the pantry and recipe book back to the snapshot. It changes the same objects
+    # in place, because the match engine is holding on to them too.
     def restore(pantry_state, recipe_state)
       (@pantry.to_h.keys - pantry_state.keys).each { |name| @pantry.remove_item(name) }
       pantry_state.each { |name, item| restore_item(name, item) }
       (@recipe_book.to_h.keys - recipe_state.keys).each { |name| @recipe_book.delete(name) }
     end
 
+    # Resets one pantry item to its saved amount.
     def restore_item(name, item)
       if @pantry.get_item(name)
         @pantry.update_item(name, item['quantity'], item['unit'])
