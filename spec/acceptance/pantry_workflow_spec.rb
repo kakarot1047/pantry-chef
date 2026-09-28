@@ -4,7 +4,9 @@ require 'open3'
 require 'rbconfig'
 require 'tmpdir'
 
+# Exercises complete pantry workflows through the public APIs, including saving and restarting.
 RSpec.describe 'Pantry management and persistence workflows' do
+  # Keep each workflow's save file separate from the user's data and remove it after the example.
   around do |example|
     Dir.mktmpdir('pantry-chef-workflow-') do |directory|
       @path = File.join(directory, 'state.json')
@@ -19,9 +21,10 @@ RSpec.describe 'Pantry management and persistence workflows' do
     pantry.update_item('SUGAR', 100)
     pantry.add_item('water', 300, 'ml')
     pantry.remove_item('water')
+    # An empty hash supplies an empty recipe collection for this pantry-only workflow.
     PantryChef::Storage.new(@path).save(pantry, {})
 
-    # This uses the public domain API; the teammate-owned terminal CLI is still deferred.
+    # A separate Ruby process must recover the pantry from disk without access to the original objects.
     program = <<~RUBY
       require 'storage'
       state = PantryChef::Storage.new(ARGV.fetch(0)).load
@@ -29,6 +32,7 @@ RSpec.describe 'Pantry management and persistence workflows' do
       puts JSON.generate(pantry.items)
     RUBY
     library = File.expand_path('../../lib', __dir__)
+    # Use the same Ruby executable as the test suite and capture output, errors, and exit status.
     output, errors, status = Open3.capture3(RbConfig.ruby, '-I', library, '-e', program, @path)
 
     expect(status.success?).to be(true), errors

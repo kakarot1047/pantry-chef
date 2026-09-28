@@ -2,12 +2,13 @@
 
 require 'tmpdir'
 
+# Checks JSON persistence and makes sure failed reads or writes preserve existing data.
 RSpec.describe PantryChef::Storage do
   subject(:storage) { described_class.new(path) }
 
   let(:path) { File.join(@directory, 'data', 'pantry_chef.json') }
   let(:pantry) { PantryChef::Pantry.new('sugar' => { 'quantity' => 200, 'unit' => 'g' }) }
-  # RecipeBook has no serialization methods in the merged foundation yet.
+  # Supply only the recipe serialization interface here; integration_spec.rb covers the real RecipeBook.
   let(:recipe_book) { double('RecipeBook serialization interface', to_h: recipes) }
   let(:recipes) do
     { 'syrup' => { 'name' => 'syrup', 'servings' => 1,
@@ -15,6 +16,7 @@ RSpec.describe PantryChef::Storage do
   end
   let(:error) { PantryChef::StorageError }
 
+  # Give each example a temporary directory that is removed afterward, including after a failure.
   around do |example|
     Dir.mktmpdir('pantry-chef-spec-') do |directory|
       @directory = directory
@@ -22,6 +24,7 @@ RSpec.describe PantryChef::Storage do
     end
   end
 
+  # Write raw input directly so load tests can exercise malformed files that save would reject.
   def write_source(content)
     FileUtils.mkdir_p(File.dirname(path))
     File.write(path, content)
@@ -85,6 +88,7 @@ RSpec.describe PantryChef::Storage do
     end
   end
 
+  # These values are valid JSON, but they do not have the structure or inventory values we accept.
   [nil, [], {}, { 'pantry' => [], 'recipes' => {} },
    { 'pantry' => {}, 'recipes' => [] },
    { 'pantry' => { 'sugar' => { 'quantity' => -1, 'unit' => 'g' } }, 'recipes' => {} }].each do |state|
@@ -104,6 +108,7 @@ RSpec.describe PantryChef::Storage do
   it 'preserves the previous save if serialization fails' do
     storage.save(pantry, recipe_book)
     before = File.binread(path)
+    # NaN cannot be represented in ordinary JSON, so serialization must fail before replacing the file.
     allow(recipe_book).to receive(:to_h).and_return('invalid' => Float::NAN)
     expect { storage.save(pantry, recipe_book) }.to raise_error(error, /Cannot save/)
     expect(File.binread(path)).to eq(before)
@@ -118,6 +123,7 @@ RSpec.describe PantryChef::Storage do
   it 'preserves the previous save and cleans temporary files if replacement fails' do
     storage.save(pantry, recipe_book)
     before = File.binread(path)
+    # Fail the final replacement step after the temporary file has been written.
     allow(File).to receive(:rename).and_raise(Errno::EACCES)
     pantry.update_item('sugar', 50)
     expect { storage.save(pantry, recipe_book) }.to raise_error(error, /Cannot save/)
@@ -128,9 +134,11 @@ RSpec.describe PantryChef::Storage do
   it 'cleans a partially written temporary file after a disk failure' do
     storage.save(pantry, recipe_book)
     before = File.binread(path)
+    # Keep a real temporary file, but simulate running out of disk space partway through its write.
     allow(Tempfile).to receive(:create).and_wrap_original do |original, *args, &block|
       original.call(*args) do |file|
         allow(file).to receive(:write) do
+          # syswrite leaves actual partial content without calling the stubbed write method again.
           file.syswrite('partial')
           raise Errno::ENOSPC
         end

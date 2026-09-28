@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+# Checks recipe lookup, duplicate protection, sorted listing, and saving the collection as a hash.
 RSpec.describe PantryChef::RecipeBook do
+  # Each example gets an empty book so additions cannot affect another example.
   subject(:book) { described_class.new }
 
   let(:flour) { { 'quantity' => 200, 'unit' => 'g' } }
@@ -32,6 +34,7 @@ RSpec.describe PantryChef::RecipeBook do
   end
 
   describe 'duplicate protection' do
+    # A different serving count lets us detect an accidental replacement of the original recipe.
     let(:pancakes_v2) { PantryChef::Recipe.new(name: 'PANCAKES', servings: 8, ingredients: { 'flour' => flour }) }
 
     before { book.add(pancakes) }
@@ -41,6 +44,7 @@ RSpec.describe PantryChef::RecipeBook do
     end
 
     it 'leaves the existing recipe unchanged and keeps exactly one' do
+      # Catch the expected rejection so we can inspect the book afterward.
       begin
         book.add(pancakes_v2)
       rescue PantryChef::ValidationError
@@ -71,6 +75,7 @@ RSpec.describe PantryChef::RecipeBook do
   end
 
   describe 'serialization' do
+    # These examples use the recipe map itself; Storage supplies the outer save-file keys.
     it 'round-trips through to_h and from_h' do
       book.add(pancakes)
       book.add(omelette)

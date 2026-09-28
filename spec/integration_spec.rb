@@ -3,15 +3,17 @@
 require 'tmpdir'
 require 'json'
 
-# Cross-class integration: real Pantry, Recipe, RecipeBook and Storage objects, no doubles.
-# Guards the single-envelope save format and the shared ValidationError contract.
+# Checks how real Pantry, Recipe, RecipeBook, and Storage objects work together.
+# Covers the shared JSON structure and validation error used across the classes.
 RSpec.describe 'Pantry Chef persistence integration' do
   let(:flour) { { 'quantity' => 200, 'unit' => 'g' } }
 
+  # Build a recipe that uses some of the flour supplied by stocked_pantry.
   def flatbread
     PantryChef::Recipe.new(name: 'Flatbread', servings: 2, ingredients: { 'flour' => flour })
   end
 
+  # Return a new pantry each time so changes in one scenario cannot affect another.
   def stocked_pantry
     PantryChef::Pantry.new.tap { |pantry| pantry.add_item('flour', 500, 'g') }
   end
@@ -23,6 +25,7 @@ RSpec.describe 'Pantry Chef persistence integration' do
 
       PantryChef::Storage.new(path).save(stocked_pantry, book)
 
+      # Inspect the file directly so a matching mistake in save and load cannot hide a format error.
       raw = JSON.parse(File.read(path))
       expect(raw.keys).to contain_exactly('pantry', 'recipes')
       expect(raw['pantry']).to eq('flour' => { 'quantity' => 500, 'unit' => 'g' })
@@ -39,6 +42,7 @@ RSpec.describe 'Pantry Chef persistence integration' do
       PantryChef::Storage.new(path).save(stocked_pantry, PantryChef::RecipeBook.new([flatbread]))
 
       state = PantryChef::Storage.new(path).load
+      # Storage returns hashes; each domain class is responsible for rebuilding its own objects.
       pantry = PantryChef::Pantry.from_h(state['pantry'])
       book = PantryChef::RecipeBook.from_h(state['recipes'])
 

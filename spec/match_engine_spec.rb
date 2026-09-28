@@ -2,21 +2,26 @@
 
 require 'spec_helper'
 
+# Checks recipe availability and shortages, then verifies cooking changes stock only after validation.
 RSpec.describe PantryChef::MatchEngine do
+  # Builds a real recipe so matching uses the same normalized requirements as the application.
   def recipe(name, ingredients, servings: 2)
     PantryChef::Recipe.new(name: name, servings: servings, ingredients: ingredients)
   end
 
+  # Loads the supplied stock into a fresh pantry for each scenario.
   def pantry_with(items)
     PantryChef::Pantry.new(items)
   end
 
+  # Wires real domain objects together and returns them so examples can inspect stock after a call.
   def engine_for(pantry_items, recipes)
     pantry = pantry_with(pantry_items)
     book = PantryChef::RecipeBook.new(recipes)
     [described_class.new(pantry: pantry, recipe_book: book), pantry, book]
   end
 
+  # The same two requirements let examples compare spare stock, exact stock, and shortages.
   let(:flatbread) do
     recipe('Flatbread', {
              'flour' => { 'quantity' => 400, 'unit' => 'g' },
@@ -80,6 +85,7 @@ RSpec.describe PantryChef::MatchEngine do
     end
 
     it 'excludes a recipe on unit mismatch' do
+      # Even a large amount in kg cannot satisfy a requirement in g; no unit conversion is supported.
       engine, = engine_for(
         {
           'flour' => { 'quantity' => 500, 'unit' => 'kg' },
@@ -140,6 +146,7 @@ RSpec.describe PantryChef::MatchEngine do
                       'sugar' => { 'quantity' => 100, 'unit' => 'g' }
                     })
 
+      # The pantry has everything for flatbread and soup, while cake still needs sugar.
       engine, = engine_for(
         {
           'flour' => { 'quantity' => 500, 'unit' => 'g' },
@@ -289,6 +296,7 @@ RSpec.describe PantryChef::MatchEngine do
     end
 
     it 'deducts nothing when a multi-ingredient recipe fails on a later ingredient' do
+      # Salt comes last and is short, exposing any implementation that consumes earlier items too soon.
       pasta = recipe('Pasta', {
                        'flour' => { 'quantity' => 200, 'unit' => 'g' },
                        'egg' => { 'quantity' => 2, 'unit' => 'pc' },

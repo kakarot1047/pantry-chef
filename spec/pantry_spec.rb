@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+# Checks inventory changes, input validation, and protection of the pantry's internal state.
 RSpec.describe PantryChef::Pantry do
+  # Each example gets its own empty pantry so stock cannot leak between tests.
   subject(:pantry) { described_class.new }
 
   let(:error) { PantryChef::ValidationError }
@@ -38,17 +40,20 @@ RSpec.describe PantryChef::Pantry do
     expect(pantry.items.keys).to eq(['water'])
   end
 
+  # Try each invalid value as both a name and a unit, then check the inventory stayed intact.
   [nil, '', '  ', 42].each do |value|
     it "rejects invalid names and units #{value.inspect} without changing state" do
       pantry.add_item('sugar', 200, 'g')
       before = pantry.to_h
       expect { pantry.add_item(value, 1, 'g') }.to raise_error(error, /name/)
       expect { pantry.add_item('flour', 1, value) }.to raise_error(error, /Unit/)
+      # An omitted unit is valid on update: nil means keep the current unit.
       expect { pantry.update_item('sugar', 1, value) }.to raise_error(error, /Unit/) unless value.nil?
       expect(pantry.to_h).to eq(before)
     end
   end
 
+  # Run the same quantity cases through every API that accepts an amount, including read-only checks.
   [nil, true, [], {}, 'abc', '', '2 g', -5, 0, '0', '-1', Float::NAN,
    Float::INFINITY, -Float::INFINITY, 'NaN', 'Infinity', '1e999', Complex(1, 2)].each do |value|
     it "rejects invalid quantity #{value.inspect} in every operation without mutation" do
@@ -107,12 +112,14 @@ RSpec.describe PantryChef::Pantry do
   end
 
   it 'does not expose mutable state through inputs, lookups, or serialization' do
+    # Unary + makes these strings mutable despite frozen_string_literal, so we can test copying.
     name = +'sugar'
     unit = +'g'
     added = pantry.add_item(name, 200, unit)
     name.replace('flour')
     unit.replace('kg')
     added['quantity'] = -1
+    # Mutate nested values from every public view; a shallow hash copy would still share unit strings.
     [pantry.get_item('sugar'), pantry.items['sugar'], pantry.to_h['sugar']].each do |item|
       item['quantity'] = -1
       item['unit'].replace('kg')
@@ -129,6 +136,7 @@ RSpec.describe PantryChef::Pantry do
     expect(restored.to_h).to eq('sugar' => { 'quantity' => 200, 'unit' => 'g' })
   end
 
+  # Saved data must pass validation too, even when it did not come from an interactive command.
   [nil, [], { 'sugar' => nil }, { 'sugar' => {} },
    { 'sugar' => { 'quantity' => -1, 'unit' => 'g' } }].each do |source|
     it "rejects malformed serialized inventory #{source.inspect}" do
