@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# Checks terminal commands, saved state, and recovery when saving fails.
+# StringIO captures terminal output so examples can inspect what a user would see.
 require 'stringio'
 require 'tmpdir'
 
@@ -9,6 +11,7 @@ RSpec.describe PantryChef::CLI do
   let(:recipe_book) { PantryChef::RecipeBook.new }
   let(:engine) { PantryChef::MatchEngine.new(pantry: pantry, recipe_book: recipe_book) }
 
+  # Give each example its own storage directory and remove it afterward.
   around do |example|
     Dir.mktmpdir do |dir|
       @dir = dir
@@ -16,15 +19,18 @@ RSpec.describe PantryChef::CLI do
     end
   end
 
+  # Reuse one storage object within an example, writing only to its temporary directory.
   def storage
     @storage ||= PantryChef::Storage.new(File.join(@dir, 'data', 'pantry_chef.json'))
   end
 
+  # Share the example's domain objects and inject streams instead of using the terminal.
   def cli(input = StringIO.new)
     PantryChef::CLI.new(pantry: pantry, recipe_book: recipe_book, match_engine: engine,
                         storage: storage, input: input, output: output)
   end
 
+  # Run commands directly and return all output captured so far in this example.
   def run(*lines)
     subject = cli
     lines.each { |line| subject.run_command(line) }
@@ -107,6 +113,7 @@ RSpec.describe PantryChef::CLI do
   end
 
   describe 'matching commands' do
+    # Flour covers flatbread completely; pancakes still need milk.
     before do
       run('add flour 500 g', 'add-recipe flatbread 2 "flour 200 g"',
           'add-recipe pancakes 4 "flour 200 g, milk 300 ml"')
@@ -148,6 +155,7 @@ RSpec.describe PantryChef::CLI do
     it 'saves after a mutating command so a fresh session sees it' do
       run('add flour 500 g', 'add-recipe flatbread 2 "flour 200 g"', 'cook flatbread')
 
+      # Rebuild both objects from disk to check the saved result independently of memory.
       state = storage.load
       reloaded_pantry = PantryChef::Pantry.from_h(state['pantry'])
       reloaded_book = PantryChef::RecipeBook.from_h(state['recipes'])
@@ -158,16 +166,19 @@ RSpec.describe PantryChef::CLI do
   end
 
   describe 'save failures' do
+    # Keep real saves until the configured count, then simulate a storage failure.
     let(:failing_storage) do
       Class.new(PantryChef::Storage) do
         attr_accessor :fail_after
 
+        # Fail on the first save unless an example allows some successful setup commands.
         def initialize(path)
           super
           @saves = 0
           @fail_after = 0
         end
 
+        # Raise before writing so the last successful save remains on disk.
         def save(pantry, recipe_book)
           @saves += 1
           raise PantryChef::StorageError, 'disk full (simulated)' if @saves > @fail_after
@@ -177,6 +188,7 @@ RSpec.describe PantryChef::CLI do
       end.new(File.join(@dir, 'data', 'pantry_chef.json'))
     end
 
+    # Use the same pantry and match engine while replacing only the storage dependency.
     def cli_with_failing_storage
       PantryChef::CLI.new(pantry: pantry, recipe_book: recipe_book, match_engine: engine,
                           storage: failing_storage, input: StringIO.new, output: output)
@@ -196,6 +208,7 @@ RSpec.describe PantryChef::CLI do
       failing_storage.fail_after = 1
       subject = cli_with_failing_storage
       subject.run_command('add flour 500 g')
+      # Both attempts fail, so neither addition should survive in the pantry.
       2.times { subject.run_command('add flour 100 g') }
 
       expect(pantry.get_item('flour')['quantity']).to eq(500.0)
@@ -219,6 +232,7 @@ RSpec.describe PantryChef::CLI do
       subject.run_command('cook flatbread')
 
       expect(pantry.get_item('flour')['quantity']).to eq(500.0)
+      # The existing engine must see the restored pantry through its shared reference.
       expect(engine.cookable_recipes.map(&:name)).to eq(['flatbread'])
     end
   end

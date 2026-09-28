@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
+# Checks how a recipe validates input, protects its data, and converts to and from saved hashes.
 RSpec.describe PantryChef::Recipe do
   let(:flour) { { 'quantity' => 200, 'unit' => 'g' } }
   let(:eggs)  { { 'quantity' => 2, 'unit' => 'pcs' } }
 
+  # Starts with a valid recipe so each example can change just the field it is checking.
   def build(**overrides)
     described_class.new(name: 'Pancakes', servings: 4,
                         ingredients: { 'flour' => flour, 'eggs' => eggs }, **overrides)
@@ -58,6 +60,7 @@ RSpec.describe PantryChef::Recipe do
     it 'returns independent string copies from to_h' do
       recipe = build
       h = recipe.to_h
+      # Appending changes the strings themselves, which would expose a shared reference.
       h['name'] << 'x'
       h['ingredients']['flour']['unit'] << 'x'
       expect(recipe.name).to eq('pancakes')
@@ -102,6 +105,7 @@ RSpec.describe PantryChef::Recipe do
     end
 
     it 'rejects infinite and NaN quantities' do
+      # Check both numeric values and typed text; neither form is a usable ingredient amount.
       [Float::INFINITY, -Float::INFINITY, Float::NAN, 'Infinity', 'NaN'].each do |bad|
         expect { build(ingredients: { 'flour' => { 'quantity' => bad, 'unit' => 'g' } }) }
           .to raise_error(PantryChef::ValidationError, /positive finite number/)
@@ -121,6 +125,7 @@ RSpec.describe PantryChef::Recipe do
     end
 
     it 'rejects the same ingredient listed twice under different casing' do
+      # Ruby allows both hash keys, but recipe normalization turns them into the same name.
       expect { build(ingredients: { 'Flour' => flour, 'flour' => flour }) }
         .to raise_error(PantryChef::ValidationError, /duplicate ingredient/)
     end
